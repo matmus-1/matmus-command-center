@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
+  isConfigured,
   fetchAgents,
   fetchActivity,
   fetchRelationships,
@@ -28,6 +29,24 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Check configuration
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="text-center max-w-lg">
+          <div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-4" />
+          <p className="text-amber-400 text-sm font-mono mb-2">Missing Configuration</p>
+          <p className="text-zinc-500 text-xs font-mono mb-4">
+            VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set as environment variables.
+          </p>
+          <p className="text-zinc-600 text-xs font-mono">
+            Add them in Vercel → Settings → Environment Variables, then redeploy.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // Initial data fetch
   const loadData = useCallback(async () => {
     try {
@@ -38,10 +57,10 @@ export default function App() {
         fetchRelationships(),
         fetchSystemEvents(50),
       ])
-      setAgents(agentsData)
-      setActivity(activityData)
-      setRelationships(relData)
-      setSystemEvents(eventsData)
+      setAgents(agentsData || [])
+      setActivity(activityData || [])
+      setRelationships(relData || [])
+      setSystemEvents(eventsData || [])
     } catch (err) {
       console.error('Failed to load data:', err)
       setError(err.message)
