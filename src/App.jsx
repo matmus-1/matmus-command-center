@@ -9,45 +9,38 @@ import {
   subscribeActivity,
   subscribeSystemEvents,
 } from './lib/supabase'
-import SystemStats from './components/SystemStats'
-import AgentFleet from './components/AgentFleet'
+import Sidebar from './components/Sidebar'
+import SummaryCards from './components/SummaryCards'
+import CommandMap from './components/CommandMap'
+import FleetRoster from './components/FleetRoster'
 import ActivityTimeline from './components/ActivityTimeline'
-import NeuralMap from './components/NeuralMap'
-
-const TABS = [
-  { id: 'fleet', label: 'Agent Fleet' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'map', label: 'Neural Map' },
-]
+import AgentFleet from './components/AgentFleet'
 
 export default function App() {
   const [agents, setAgents] = useState([])
   const [activity, setActivity] = useState([])
   const [relationships, setRelationships] = useState([])
   const [systemEvents, setSystemEvents] = useState([])
-  const [activeTab, setActiveTab] = useState('fleet')
+  const [activeView, setActiveView] = useState('agents')
+  const [viewMode, setViewMode] = useState('command') // grid | neural | command
+  const [selectedAgent, setSelectedAgent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Check configuration
   if (!isConfigured) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="text-center max-w-lg">
           <div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-4" />
           <p className="text-amber-400 text-sm font-mono mb-2">Missing Configuration</p>
-          <p className="text-zinc-500 text-xs font-mono mb-4">
-            VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set as environment variables.
-          </p>
-          <p className="text-zinc-600 text-xs font-mono">
-            Add them in Vercel → Settings → Environment Variables, then redeploy.
+          <p className="text-zinc-500 text-xs font-mono">
+            Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables.
           </p>
         </div>
       </div>
     )
   }
 
-  // Initial data fetch
   const loadData = useCallback(async () => {
     try {
       setError(null)
@@ -72,7 +65,6 @@ export default function App() {
   useEffect(() => {
     loadData()
 
-    // Set up real-time subscriptions
     const agentSub = subscribeAgents((payload) => {
       if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
         setAgents(prev => {
@@ -99,7 +91,6 @@ export default function App() {
       }
     })
 
-    // Periodic refresh every 60s as fallback
     const interval = setInterval(loadData, 60000)
 
     return () => {
@@ -112,7 +103,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="text-center">
           <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse mx-auto mb-4" />
           <p className="text-zinc-500 text-sm font-mono">Connecting to Supabase...</p>
@@ -123,15 +114,12 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="text-center max-w-md">
           <div className="w-3 h-3 rounded-full bg-red-400 mx-auto mb-4" />
           <p className="text-red-400 text-sm font-mono mb-2">Connection Error</p>
           <p className="text-zinc-500 text-xs font-mono mb-4">{error}</p>
-          <button
-            onClick={loadData}
-            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded font-mono transition-colors"
-          >
+          <button onClick={loadData} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded font-mono transition-colors">
             Retry
           </button>
         </div>
@@ -140,51 +128,107 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
-      {/* System Stats Bar */}
-      <SystemStats agents={agents} />
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+      {/* Sidebar */}
+      <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
-      {/* Tab Navigation */}
-      <div className="border-b border-zinc-800 px-6">
-        <div className="flex items-center gap-1">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-xs font-mono transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-zinc-200'
-                  : 'text-zinc-500 hover:text-zinc-400'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-400" />
-              )}
-            </button>
-          ))}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <h1 className="text-lg font-semibold text-zinc-200">Command Center</h1>
+            <p className="text-[11px] text-zinc-600">Agent fleet overview and operational status</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Live indicator */}
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-mono text-emerald-400 font-semibold">LIVE</span>
+            </div>
 
-          {/* Refresh button */}
-          <div className="ml-auto flex items-center gap-2">
+            {/* Refresh */}
             <button
               onClick={loadData}
-              className="text-zinc-600 hover:text-zinc-400 text-xs font-mono transition-colors"
-              title="Refresh"
+              className="text-zinc-600 hover:text-zinc-400 text-xs font-mono transition-colors px-2 py-1 rounded hover:bg-white/[0.03]"
             >
-              ↻ refresh
+              ↻
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-6">
-        {activeTab === 'fleet' && <AgentFleet agents={agents} />}
-        {activeTab === 'timeline' && (
-          <ActivityTimeline activity={activity} systemEvents={systemEvents} />
+        {/* View Content */}
+        {activeView === 'agents' && (
+          <div className="flex-1 flex overflow-hidden">
+            {/* Center area */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Summary Cards */}
+              <SummaryCards agents={agents} />
+
+              {/* Agent Fleet heading + view toggle */}
+              <div className="flex items-center justify-between mt-6 mb-4">
+                <h2 className="text-base font-semibold text-zinc-200">Agent Fleet</h2>
+                <div className="flex items-center rounded-lg border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                  {[
+                    { id: 'grid', label: '☰ GRID' },
+                    { id: 'command', label: '⬡ COMMAND' },
+                  ].map(mode => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setViewMode(mode.id)}
+                      className={`px-3 py-1.5 text-[10px] font-mono transition-colors ${
+                        viewMode === mode.id
+                          ? 'bg-emerald-500/10 text-emerald-400'
+                          : 'text-zinc-500 hover:text-zinc-400 hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Map or Grid */}
+              {viewMode === 'command' ? (
+                <div className="rounded-lg border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                  <CommandMap
+                    agents={agents}
+                    relationships={relationships}
+                    selectedAgent={selectedAgent}
+                    onSelectAgent={setSelectedAgent}
+                  />
+                </div>
+              ) : (
+                <AgentFleet agents={agents} />
+              )}
+            </div>
+
+            {/* Fleet Roster */}
+            <FleetRoster
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelectAgent={setSelectedAgent}
+            />
+          </div>
         )}
-        {activeTab === 'map' && (
-          <NeuralMap agents={agents} relationships={relationships} />
+
+        {activeView === 'timeline' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <ActivityTimeline activity={activity} systemEvents={systemEvents} />
+          </div>
+        )}
+
+        {activeView === 'cron' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <h2 className="text-lg font-semibold text-zinc-200 mb-4">Cron Health</h2>
+            <p className="text-zinc-500 text-sm">Cron job monitoring coming soon.</p>
+          </div>
+        )}
+
+        {activeView === 'events' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <ActivityTimeline activity={[]} systemEvents={systemEvents} />
+          </div>
         )}
       </div>
     </div>
