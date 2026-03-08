@@ -5,9 +5,11 @@ import {
   fetchActivity,
   fetchRelationships,
   fetchSystemEvents,
+  fetchPendingApprovals,
   subscribeAgents,
   subscribeActivity,
   subscribeSystemEvents,
+  subscribeTasks,
 } from './lib/supabase'
 import Sidebar from './components/Sidebar'
 import SummaryCards from './components/SummaryCards'
@@ -16,6 +18,7 @@ import FleetRoster from './components/FleetRoster'
 import ActivityTimeline from './components/ActivityTimeline'
 import AgentFleet from './components/AgentFleet'
 import TaskQueue from './components/TaskQueue'
+import GoalTracker from './components/GoalTracker'
 import TokenAnalytics from './components/TokenAnalytics'
 import CronHealth from './components/CronHealth'
 import WorkspaceSync from './components/WorkspaceSync'
@@ -29,6 +32,7 @@ export default function App() {
   const [activeView, setActiveView] = useState('agents')
   const [viewMode, setViewMode] = useState('command') // grid | neural | command
   const [selectedAgent, setSelectedAgent] = useState(null)
+  const [pendingApprovals, setPendingApprovals] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -49,16 +53,18 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null)
-      const [agentsData, activityData, relData, eventsData] = await Promise.all([
+      const [agentsData, activityData, relData, eventsData, approvalsData] = await Promise.all([
         fetchAgents(),
         fetchActivity(100),
         fetchRelationships(),
         fetchSystemEvents(50),
+        fetchPendingApprovals().catch(() => []),
       ])
       setAgents(agentsData || [])
       setActivity(activityData || [])
       setRelationships(relData || [])
       setSystemEvents(eventsData || [])
+      setPendingApprovals((approvalsData || []).length)
     } catch (err) {
       console.error('Failed to load data:', err)
       setError(err.message)
@@ -96,12 +102,17 @@ export default function App() {
       }
     })
 
+    const tasksSub = subscribeTasks(() => {
+      fetchPendingApprovals().then(data => setPendingApprovals((data || []).length)).catch(() => {})
+    })
+
     const interval = setInterval(loadData, 60000)
 
     return () => {
       agentSub?.unsubscribe?.()
       activitySub?.unsubscribe?.()
       eventsSub?.unsubscribe?.()
+      tasksSub?.unsubscribe?.()
       clearInterval(interval)
     }
   }, [loadData])
@@ -168,7 +179,7 @@ export default function App() {
             {/* Center area */}
             <div className="flex-1 overflow-y-auto p-6">
               {/* Summary Cards */}
-              <SummaryCards agents={agents} />
+              <SummaryCards agents={agents} pendingApprovals={pendingApprovals} />
 
               {/* Agent Fleet heading + view toggle */}
               <div className="flex items-center justify-between mt-6 mb-4">
@@ -226,6 +237,12 @@ export default function App() {
         {activeView === 'tasks' && (
           <div className="flex-1 overflow-y-auto p-6">
             <TaskQueue />
+          </div>
+        )}
+
+        {activeView === 'goals' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <GoalTracker />
           </div>
         )}
 

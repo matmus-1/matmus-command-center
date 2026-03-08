@@ -2,6 +2,7 @@ const NAV_ITEMS = [
   { id: 'agents', label: 'Agents', icon: '⬡' },
   { id: 'timeline', label: 'Timeline', icon: '◷' },
   { id: 'tasks', label: 'Tasks', icon: '☐' },
+  { id: 'goals', label: 'Goals', icon: '◎' },
   { id: 'tokens', label: 'Tokens', icon: '◈' },
   { id: 'cron', label: 'Cron Health', icon: '⟳' },
   { id: 'workspace', label: 'Workspace', icon: '⊞' },

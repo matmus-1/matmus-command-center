@@ -168,3 +168,95 @@ export async function createBackup(backupData) {
   if (error) throw error
   return data[0]
 }
+
+// ===== AGENT BUDGETS =====
+export async function fetchAgentBudgets() {
+  const { data, error } = await supabase
+    .from('agent_budget_status')
+    .select('*')
+  if (error) throw error
+  return data
+}
+
+export async function updateAgentBudget(agentId, budgetUsd) {
+  const { data, error } = await supabase
+    .from('agents')
+    .update({ monthly_budget_usd: budgetUsd })
+    .eq('id', agentId)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+// ===== GOALS =====
+export async function fetchGoals() {
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function createGoal(goal) {
+  const { data, error } = await supabase.from('goals').insert([goal]).select()
+  if (error) throw error
+  return data[0]
+}
+
+export async function updateGoal(id, updates) {
+  const { data, error } = await supabase
+    .from('goals')
+    .update(updates)
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export function subscribeGoals(callback) {
+  return supabase
+    .channel('goals-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, callback)
+    .subscribe()
+}
+
+// ===== APPROVALS =====
+export async function fetchPendingApprovals() {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('requires_approval', true)
+    .is('approved_at', null)
+    .eq('status', 'pending')
+    .order('priority', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function approveTask(id) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({
+      approved_at: new Date().toISOString(),
+      approved_by: 'dashboard',
+    })
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export async function rejectTask(id, reason) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({
+      status: 'cancelled',
+      error_message: reason || 'Approval rejected',
+    })
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}

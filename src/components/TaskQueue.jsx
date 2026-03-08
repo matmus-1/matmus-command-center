@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchTasks, createTask, updateTask, subscribeTasks } from '../lib/supabase'
+import { fetchTasks, createTask, updateTask, subscribeTasks, approveTask, rejectTask, fetchGoals } from '../lib/supabase'
 
 const PRIORITY_CONFIG = {
   0: { label: 'P0', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', name: 'Critical' },
@@ -55,10 +55,23 @@ function TaskRow({ task, isExpanded, onToggle }) {
           {p.label}
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-sm text-zinc-200 font-medium truncate">{task.title}</div>
-          {task.agent_id && (
-            <div className="text-[10px] font-mono text-zinc-600 mt-0.5">{task.agent_id}</div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-zinc-200 font-medium truncate">{task.title}</span>
+            {task.requires_approval && !task.approved_at && (
+              <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 flex-shrink-0">
+                APPROVAL
+              </span>
+            )}
+            {task.requires_approval && task.approved_at && (
+              <span className="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex-shrink-0">
+                APPROVED
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] font-mono text-zinc-600 mt-0.5">
+            {task.agent_id && <span>{task.agent_id}</span>}
+            {task.goal_id && <span>{task.agent_id ? ' · ' : ''}goal linked</span>}
+          </div>
         </div>
         <span className={`text-[9px] font-mono font-semibold uppercase ${st.text}`}>
           {task.status}
@@ -105,8 +118,28 @@ function TaskRow({ task, isExpanded, onToggle }) {
             </div>
           )}
 
+          {/* Approval buttons */}
+          {task.requires_approval && !task.approved_at && task.status === 'pending' && (
+            <div className="flex items-center gap-2 pt-1 pb-1">
+              <span className="text-[10px] font-mono text-yellow-400">Awaiting approval</span>
+              <div className="flex-1" />
+              <button
+                onClick={async (e) => { e.stopPropagation(); try { await approveTask(task.id) } catch (err) { console.error(err) } }}
+                className="text-[10px] font-mono px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+              >
+                Approve
+              </button>
+              <button
+                onClick={async (e) => { e.stopPropagation(); try { await rejectTask(task.id, 'Rejected from dashboard') } catch (err) { console.error(err) } }}
+                className="text-[10px] font-mono px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+              >
+                Reject
+              </button>
+            </div>
+          )}
+
           {/* Action buttons */}
-          {(task.status === 'pending' || task.status === 'running') && (
+          {(task.status === 'pending' || task.status === 'running') && !(task.requires_approval && !task.approved_at) && (
             <div className="flex items-center gap-2 pt-1">
               {task.status === 'pending' && (
                 <button
@@ -138,11 +171,13 @@ function TaskRow({ task, isExpanded, onToggle }) {
   )
 }
 
-function NewTaskForm({ onSubmit, onCancel }) {
+function NewTaskForm({ onSubmit, onCancel, goals }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState(2)
   const [agentId, setAgentId] = useState('')
+  const [goalId, setGoalId] = useState('')
+  const [requiresApproval, setRequiresApproval] = useState(false)
 
   const handleSubmit = () => {
     if (!title.trim()) return
@@ -151,13 +186,19 @@ function NewTaskForm({ onSubmit, onCancel }) {
       description: description.trim() || null,
       priority,
       agent_id: agentId || null,
+      goal_id: goalId || null,
+      requires_approval: requiresApproval,
       status: 'pending',
     })
     setTitle('')
     setDescription('')
     setPriority(2)
     setAgentId('')
+    setGoalId('')
+    setRequiresApproval(false)
   }
+
+  const activeGoals = (goals || []).filter(g => g.status === 'active')
 
   return (
     <div className="rounded-lg border p-4 mb-5 space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
@@ -178,7 +219,7 @@ function NewTaskForm({ onSubmit, onCancel }) {
         className="w-full bg-zinc-900/50 border rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 font-mono focus:outline-none focus:border-emerald-500/50 resize-none"
         style={{ borderColor: 'var(--border)' }}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1">
           {[0, 1, 2, 3].map(p => {
             const cfg = PRIORITY_CONFIG[p]
@@ -205,6 +246,28 @@ function NewTaskForm({ onSubmit, onCancel }) {
           className="bg-zinc-900/50 border rounded px-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-600 font-mono w-28 focus:outline-none focus:border-emerald-500/50"
           style={{ borderColor: 'var(--border)' }}
         />
+        {activeGoals.length > 0 && (
+          <select
+            value={goalId}
+            onChange={e => setGoalId(e.target.value)}
+            className="bg-zinc-900/50 border rounded px-2 py-1 text-[11px] text-zinc-200 font-mono focus:outline-none focus:border-emerald-500/50"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <option value="">No goal</option>
+            {activeGoals.map(g => (
+              <option key={g.id} value={g.id}>{g.title}</option>
+            ))}
+          </select>
+        )}
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={requiresApproval}
+            onChange={e => setRequiresApproval(e.target.checked)}
+            className="rounded border-zinc-600"
+          />
+          <span className="text-[10px] font-mono text-zinc-500">Requires approval</span>
+        </label>
         <div className="flex-1" />
         <button
           onClick={onCancel}
@@ -226,6 +289,7 @@ function NewTaskForm({ onSubmit, onCancel }) {
 
 export default function TaskQueue() {
   const [tasks, setTasks] = useState([])
+  const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [expandedId, setExpandedId] = useState(null)
@@ -234,8 +298,12 @@ export default function TaskQueue() {
   const loadTasks = async () => {
     try {
       const filters = filter !== 'all' ? { status: filter } : {}
-      const data = await fetchTasks(filters)
+      const [data, goalsData] = await Promise.all([
+        fetchTasks(filters),
+        fetchGoals().catch(() => []),
+      ])
       setTasks(data || [])
+      setGoals(goalsData || [])
     } catch (err) {
       console.error('Failed to fetch tasks:', err)
     } finally {
@@ -279,7 +347,7 @@ export default function TaskQueue() {
         </button>
       </div>
 
-      {showNewForm && <NewTaskForm onSubmit={handleCreate} onCancel={() => setShowNewForm(false)} />}
+      {showNewForm && <NewTaskForm goals={goals} onSubmit={handleCreate} onCancel={() => setShowNewForm(false)} />}
 
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-3 mb-5">

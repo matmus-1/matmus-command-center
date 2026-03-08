@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fetchTokenUsage, subscribeTokenUsage } from '../lib/supabase'
+import BudgetPanel from './BudgetPanel'
 
 function formatTokens(n) {
   if (!n) return '0'
@@ -189,6 +190,7 @@ export default function TokenAnalytics() {
 
       <TokenChart dailyData={stats.dailyData} />
       <AgentBreakdown agentStats={stats.agentStats} />
+      <BudgetPanel />
     </div>
   )
 }

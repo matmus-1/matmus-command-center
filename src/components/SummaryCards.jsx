@@ -64,7 +64,7 @@ function MetricBar({ label, value }) {
   )
 }
 
-export default function SummaryCards({ agents }) {
+export default function SummaryCards({ agents, pendingApprovals = 0 }) {
   const total = agents?.length || 0
   const healthy = agents?.filter(a => a.status === 'active' || a.status === 'idle').length || 0
   const degraded = agents?.filter(a => a.status === 'degraded').length || 0
@@ -80,11 +80,14 @@ export default function SummaryCards({ agents }) {
     <div>
       <HealthBar agents={agents} />
 
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className={`grid ${pendingApprovals > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-3 mb-4`}>
         <StatCard icon="⬡" label="Total Agents" value={total} color="text-emerald-400" />
         <StatCard icon="✓" label="Healthy" value={healthy} color="text-emerald-400" />
         <StatCard icon="⚠" label="Degraded" value={degraded} color="text-amber-400" />
         <StatCard icon="✕" label="Errors" value={errors} color="text-red-400" />
+        {pendingApprovals > 0 && (
+          <StatCard icon="◉" label="Approvals" value={pendingApprovals} color="text-yellow-400" />
+        )}
       </div>
 
       {metricsAgent && (
