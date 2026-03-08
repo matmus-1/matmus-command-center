@@ -149,9 +149,9 @@ export default function App() {
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <div>
             <h1 className="text-lg font-semibold text-zinc-200">Command Center</h1>
             <p className="text-[11px] text-zinc-600">Agent fleet overview and operational status</p>
