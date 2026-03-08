@@ -44,7 +44,7 @@ export default function Sidebar({ activeView, onViewChange }) {
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>system online</span>
         </div>
-        <span className="text-zinc-700">v1.0.0</span>
+        <span className="text-zinc-700">v2.0.0</span>
       </div>
     </div>
   )
