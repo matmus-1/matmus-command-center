@@ -1,7 +1,11 @@
 const NAV_ITEMS = [
   { id: 'agents', label: 'Agents', icon: '⬡' },
   { id: 'timeline', label: 'Timeline', icon: '◷' },
+  { id: 'tasks', label: 'Tasks', icon: '☐' },
+  { id: 'tokens', label: 'Tokens', icon: '◈' },
   { id: 'cron', label: 'Cron Health', icon: '⟳' },
+  { id: 'workspace', label: 'Workspace', icon: '⊞' },
+  { id: 'backup', label: 'Backup', icon: '↓' },
   { id: 'events', label: 'Events', icon: '⚡' },
 ]
 

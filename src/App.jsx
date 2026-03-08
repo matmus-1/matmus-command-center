@@ -15,6 +15,11 @@ import CommandMap from './components/CommandMap'
 import FleetRoster from './components/FleetRoster'
 import ActivityTimeline from './components/ActivityTimeline'
 import AgentFleet from './components/AgentFleet'
+import TaskQueue from './components/TaskQueue'
+import TokenAnalytics from './components/TokenAnalytics'
+import CronHealth from './components/CronHealth'
+import WorkspaceSync from './components/WorkspaceSync'
+import FleetBackup from './components/FleetBackup'
 
 export default function App() {
   const [agents, setAgents] = useState([])
@@ -218,10 +223,33 @@ export default function App() {
           </div>
         )}
 
+        {activeView === 'tasks' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <TaskQueue />
+          </div>
+        )}
+
+        {activeView === 'tokens' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <TokenAnalytics />
+          </div>
+        )}
+
         {activeView === 'cron' && (
           <div className="flex-1 overflow-y-auto p-6">
-            <h2 className="text-lg font-semibold text-zinc-200 mb-4">Cron Health</h2>
-            <p className="text-zinc-500 text-sm">Cron job monitoring coming soon.</p>
+            <CronHealth />
+          </div>
+        )}
+
+        {activeView === 'workspace' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <WorkspaceSync />
+          </div>
+        )}
+
+        {activeView === 'backup' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <FleetBackup />
           </div>
         )}
 
